@@ -1,0 +1,30 @@
+{
+  "name": "buttler",
+  "version": "0.2.0",
+  "description": "Interactive OpenTUI code import/export diagnostics for Bun",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "buttler": "./index.ts"
+  },
+  "scripts": {
+    "start": "bun run index.ts",
+    "dev": "bun --watch run index.ts",
+    "build": "bun build --compile index.ts --outfile dist/buttler",
+    "diagnose": "bun run index.ts . --plain",
+    "check": "bunx tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.14",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@babel/parser": "^8.0.4",
+    "@opentui/core": "^0.4.5"
+  },
+  "engines": {
+    "bun": ">=1.3.0"
+  }
+}
