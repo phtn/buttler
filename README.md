@@ -1,4 +1,8 @@
-# buttler
+---
+project: buttler
+description: project wide code diagnostics tool
+timestamp: timestamp ⸬ Thu Jul 30, 2026  00:50:38 am - +08:00
+---
 
 Buttler is an interactive code-diagnosis CLI for JavaScript and TypeScript
 projects. It scans static imports, CommonJS `require` calls, exports,
