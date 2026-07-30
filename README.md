@@ -13,6 +13,10 @@ Analyzer scans source code for risky memory, lifecycle, React, complexity, and
 bundle-size patterns. It runs directly in TypeScript, so it does not require a
 Rust toolchain or launch a subprocess during a scan.
 
+Kitty is a focused editor for the terminal's most useful color, font, cursor,
+window, tab, and behavior settings. It reads the effective values from
+`~/.config/kitty/kitty.conf` while preserving the rest of the file.
+
 The terminal dashboard is built on the official
 [OpenTUI](https://opentui.com/) renderer and runs with Bun.
 
@@ -56,6 +60,21 @@ Inside Morti:
 Analyzer uses the same navigation, filter, rescan, back, and quit shortcuts.
 Its file table groups findings by high, medium, and low severity, with the
 selected file's evidence and suggested action shown in the details panel.
+
+Inside Kitty:
+
+- `↑` / `↓` selects a setting
+- `←` / `→` adjusts numbers and predefined choices
+- `Enter` edits an exact value
+- `x` resets the selected setting to the underlying config value
+- `s` saves and `r` reloads values from disk
+- `Esc` or `b` returns to the tool selector; `q` quits
+
+Kitty changes are written as overrides in a clearly marked block at the end of
+the config, so the original reference content stays intact. Saves are atomic,
+refuse to overwrite a file changed by another process, and copy the previous
+file to `kitty.conf.buttler.bak`. Kitty's default automatic config reload makes
+saved settings visible in running terminals when that setting supports reload.
 
 ## Script-friendly output
 

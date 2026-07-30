@@ -5,6 +5,7 @@ import { VERSION } from "../core";
 import {
   ANALYZER_TOOL,
   createToolLauncher,
+  KITTY_TOOL,
   MORTI_TOOL,
   type ToolDefinition,
 } from "../ui/launcher";
@@ -12,6 +13,7 @@ import {
 const tools: ToolDefinition[] = [
   MORTI_TOOL,
   ANALYZER_TOOL,
+  KITTY_TOOL,
   ...Array.from({ length: 4 }, (_, index) => ({
     id: `tool-${index + 1}`,
     name: `Tool ${index + 1}`,
@@ -51,6 +53,8 @@ test("tool launcher renders square tiles and supports arrow and Vim navigation",
     expect(frame).toContain("clear dead code");
     expect(frame).toContain("ANALYZER");
     expect(frame).toContain("find risky patterns");
+    expect(frame).toContain("KITTY");
+    expect(frame).toContain("tune your terminal");
     expect(frame.split("\n").find((line) => line.includes("╔"))).not.toContain("Morti");
     expect(frame).toContain("⛖ navigate");
     expect(brand.y).toBe(introduction.y);

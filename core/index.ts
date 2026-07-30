@@ -37,3 +37,26 @@ export {
   type CliOptions,
   type OutputMode,
 } from "./cli";
+
+export {
+  adjustKittyValue,
+  buildKittyConfig,
+  defaultKittyConfigPath,
+  findKittyConfigIssues,
+  KITTY_MANAGED_END,
+  KITTY_MANAGED_START,
+  KITTY_SETTINGS,
+  kittyConfigWarnings,
+  kittySetting,
+  loadKittyConfig,
+  parseKittyConfig,
+  parseKittyDirectives,
+  saveKittyConfig,
+  validateKittyValue,
+  type KittyConfigSaveResult,
+  type KittyConfigIssue,
+  type KittyConfigSnapshot,
+  type KittySettingDefinition,
+  type KittySettingGroup,
+  type KittySettingKind,
+} from "./kitty-config";

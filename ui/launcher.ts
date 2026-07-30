@@ -10,9 +10,10 @@ import {
   type KeyEvent
 } from '@opentui/core'
 import path from 'node:path'
-import { analyzeCodeHealth, analyzeProject, VERSION, type AnalyzeProjectOptions } from '../core'
+import { analyzeCodeHealth, analyzeProject, loadKittyConfig, VERSION, type AnalyzeProjectOptions } from '../core'
 import { createAnalyzerDashboard } from './analyzer-dashboard'
 import { createDiagnosisDashboard } from './dashboard'
+import { createKittyDashboard } from './kitty-dashboard'
 import { getVisualWidth, padToVisualWidth, truncateToVisualWidth } from './table'
 import { theme, type ThemeColor } from './theme'
 
@@ -57,6 +58,13 @@ export const ANALYZER_TOOL: ToolDefinition = {
   name: 'analyzer',
   glyph: '⌁',
   description: 'find risky patterns'
+}
+
+export const KITTY_TOOL: ToolDefinition = {
+  id: 'kitty',
+  name: 'kitty',
+  glyph: 'K',
+  description: 'tune your terminal'
 }
 
 function statusColor(tone: LauncherTone): ThemeColor {
@@ -372,7 +380,7 @@ export async function runInteractiveToolbox(target: string, options: AnalyzeProj
 
   const showLauncher = (): void => {
     activeDispose?.()
-    launcher = createToolLauncher(renderer, [MORTI_TOOL, ANALYZER_TOOL], {
+    launcher = createToolLauncher(renderer, [MORTI_TOOL, ANALYZER_TOOL, KITTY_TOOL], {
       projectName: path.basename(path.resolve(target)) || target,
       initialToolId: lastToolId,
       onLaunch: openTool,
@@ -406,6 +414,19 @@ export async function runInteractiveToolbox(target: string, options: AnalyzeProj
         onQuit: () => renderer.destroy(),
         onBack: showLauncher,
         onRescan: (signal) => analyzeCodeHealth(target, { ...options, signal })
+      })
+      launcher?.dispose()
+      activeDispose = dashboard.dispose
+      return
+    }
+
+    if (tool.id === KITTY_TOOL.id) {
+      const config = await loadKittyConfig()
+      if (renderer.isDestroyed) return
+
+      const dashboard = createKittyDashboard(renderer, config, {
+        onQuit: () => renderer.destroy(),
+        onBack: showLauncher
       })
       launcher?.dispose()
       activeDispose = dashboard.dispose
