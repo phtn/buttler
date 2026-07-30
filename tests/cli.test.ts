@@ -45,6 +45,7 @@ describe("CLI argument parsing", () => {
   test("keeps help and version output synchronized", () => {
     expect(usage()).toContain(`buttler ${VERSION}`);
     expect(usage()).toContain("--plain");
+    expect(usage()).toContain("Enter launch");
     expect(usage()).toContain("r rescan");
   });
 });

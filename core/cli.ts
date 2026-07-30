@@ -95,7 +95,7 @@ export function parseCliArgs(args: string[]): CliOptions {
 }
 
 export function usage(): string {
-  return `buttler ${VERSION} — interactive code diagnosis
+  return `buttler ${VERSION} — interactive developer toolbox
 
 Usage
   buttler [path-or-github-url] [options]
@@ -110,7 +110,8 @@ Options
   -v, --version         Show the version
 
 Interactive keys
-  ↑/↓ navigate   / filter   r rescan   Esc clear filter   q quit
+  Toolbox  arrows or h/j/k/l navigate   Enter launch   q quit
+  Morti    ↑/↓ navigate   / filter   r rescan   Esc/b back   q quit
 
 Examples
   buttler

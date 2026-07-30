@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { createTestRenderer } from "@opentui/core/testing";
+import type { BoxRenderable, TextRenderable } from "@opentui/core";
 import type { ProjectAnalysis } from "../core";
 import { createDiagnosisDashboard } from "../ui/dashboard";
 
@@ -46,20 +47,46 @@ const analysis: ProjectAnalysis = {
   durationMs: 3,
 };
 
-test("OpenTUI dashboard renders, navigates, and filters", async () => {
+test("OpenTUI dashboard renders a responsive header, navigates, and filters", async () => {
   const setup = await createTestRenderer({ width: 110, height: 28 });
-  const dashboard = createDiagnosisDashboard(setup.renderer, analysis);
+  let wentBack = false;
+  const dashboard = createDiagnosisDashboard(setup.renderer, analysis, {
+    onBack: () => {
+      wentBack = true;
+    },
+  });
 
   try {
     await setup.flush();
     let frame = setup.captureCharFrame();
 
-    expect(frame).toContain("BUTTLER");
-    expect(frame).toContain("CODE DIAGNOSIS");
+    const brand = dashboard.root.findDescendantById("brand") as TextRenderable;
+    const summary = dashboard.root.findDescendantById("summary") as TextRenderable;
+    const filterRow = dashboard.root.findDescendantById("filter-row") as BoxRenderable;
+
+    expect(frame).toContain("Morti");
+    expect(frame).toContain("2 🅵");
+    expect(frame).toContain("search");
     expect(frame).toContain("File");
     expect(frame).toContain("Imports");
     expect(frame).toContain("src/alpha.ts");
     expect(frame).toContain("Unused exports");
+    expect(frame).toContain("Esc/b");
+    expect(brand.y).toBe(summary.y);
+    expect(summary.y).toBe(filterRow.y);
+    expect(Math.abs(summary.x + summary.width / 2 - setup.renderer.terminalWidth / 2)).toBeLessThanOrEqual(1);
+
+    setup.resize(80, 28);
+    await setup.flush();
+    expect(summary.y).toBeGreaterThan(brand.y);
+    expect(filterRow.y).toBeGreaterThan(summary.y);
+
+    setup.resize(110, 28);
+    await setup.flush();
+
+    setup.mockInput.pressKey("b");
+    await setup.flush();
+    expect(wentBack).toBe(true);
 
     setup.mockInput.pressArrow("down");
     await setup.flush();
@@ -71,7 +98,7 @@ test("OpenTUI dashboard renders, navigates, and filters", async () => {
     await setup.flush();
     frame = setup.captureCharFrame();
     expect(frame).toContain("src/beta.ts");
-    expect(frame).toContain("FILTER");
+    expect(dashboard.filterInput.value).toBe("beta");
   } finally {
     dashboard.dispose();
     setup.renderer.destroy();

@@ -16,6 +16,21 @@ export {
 } from "./analyzer";
 
 export {
+  analyzeCodeHealth,
+  analyzeCodeHealthSource,
+  codeHealthIssueLabel,
+  type AnalyzeCodeHealthOptions,
+  type CodeHealthAnalysis,
+  type CodeHealthDiagnostic,
+  type CodeHealthFileAnalysis,
+  type CodeHealthIssue,
+  type CodeHealthIssueType,
+  type CodeHealthProgress,
+  type CodeHealthSeverity,
+  type CodeHealthTotals,
+} from "./code-health";
+
+export {
   parseCliArgs,
   usage,
   VERSION,

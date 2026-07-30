@@ -38,8 +38,11 @@ type DashboardRow = { kind: 'file'; file: FileAnalysis } | { kind: 'unused'; ana
 
 type StatusTone = 'normal' | 'success' | 'warning' | 'error'
 
+const WIDE_LAYOUT_MIN_WIDTH = 96
+
 export interface DashboardOptions {
   onQuit?: () => void
+  onBack?: () => void
   onRescan?: () => Promise<ProjectAnalysis>
 }
 
@@ -257,6 +260,25 @@ export function createDiagnosisDashboard(
     ])
   })
 
+  const brandSection = new BoxRenderable(renderer, {
+    id: 'brand-section',
+    width: '100%',
+    height: 1,
+    flexDirection: 'row'
+  })
+  const resultsSection = new BoxRenderable(renderer, {
+    id: 'results-section',
+    width: '100%',
+    height: 1,
+    flexDirection: 'row'
+  })
+  const filterSection = new BoxRenderable(renderer, {
+    id: 'filter-section',
+    width: '100%',
+    height: 1,
+    flexDirection: 'row'
+  })
+
   const filterRow = new BoxRenderable(renderer, {
     id: 'filter-row',
     width: '100%',
@@ -273,7 +295,7 @@ export function createDiagnosisDashboard(
   const filterInput = new InputRenderable(renderer, {
     id: 'filter',
     flexGrow: 1,
-    placeholder: 'search files',
+    placeholder: 'search',
     textColor: theme.text,
     focusedTextColor: theme.text,
     backgroundColor: theme.surfaceRaised,
@@ -282,9 +304,12 @@ export function createDiagnosisDashboard(
   })
   filterRow.add(filterLabel)
   filterRow.add(filterInput)
-  header.add(brand)
-  header.add(summary)
-  header.add(filterRow)
+  brandSection.add(brand)
+  resultsSection.add(summary)
+  filterSection.add(filterRow)
+  header.add(brandSection)
+  header.add(resultsSection)
+  header.add(filterSection)
 
   const main = new BoxRenderable(renderer, {
     id: 'main',
@@ -373,21 +398,24 @@ export function createDiagnosisDashboard(
     flexDirection: 'row',
     backgroundColor: theme.surfaceRaised
   })
+  const shortcutChunks: TextChunk[] = [
+    fg(theme.text)(' ⛖ '),
+    fg(theme.textMuted)('navigate   '),
+    fg(theme.text)(' / '),
+    fg(theme.textMuted)('filter   '),
+    fg(theme.text)(' r '),
+    fg(theme.textMuted)('rescan   ')
+  ]
+  if (options.onBack) {
+    shortcutChunks.push(fg(theme.text)(' Esc/b '), fg(theme.textMuted)('back   '))
+  }
+  shortcutChunks.push(fg(theme.text)(' q '), fg(theme.textMuted)('quit'))
+
   const shortcuts = new TextRenderable(renderer, {
     id: 'shortcuts',
     flexGrow: 1,
     height: 1,
-
-    content: new StyledText([
-      fg(theme.text)(' ⛖ '),
-      fg(theme.textMuted)('navigate   '),
-      fg(theme.text)(' / '),
-      fg(theme.textMuted)('filter   '),
-      fg(theme.text)(' r '),
-      fg(theme.textMuted)('rescan   '),
-      fg(theme.text)(' q '),
-      fg(theme.textMuted)('quit')
-    ])
+    content: new StyledText(shortcutChunks)
   })
   const status = new TextRenderable(renderer, {
     id: 'status',
@@ -403,7 +431,7 @@ export function createDiagnosisDashboard(
   renderer.root.add(root)
 
   const availableTableWidth = (): number => {
-    const wide = renderer.terminalWidth >= 96
+    const wide = renderer.terminalWidth >= WIDE_LAYOUT_MIN_WIDTH
     const panelWidth = wide ? Math.floor(renderer.terminalWidth * 0.62) : renderer.terminalWidth
     // Borders, selection marker, and a small safety gutter.
     return Math.max(38, panelWidth - 6)
@@ -442,7 +470,20 @@ export function createDiagnosisDashboard(
   }
 
   const updateLayout = (): void => {
-    const wide = renderer.terminalWidth >= 96
+    const wide = renderer.terminalWidth >= WIDE_LAYOUT_MIN_WIDTH
+
+    header.height = wide ? 1 : 3
+    header.flexDirection = wide ? 'row' : 'column'
+
+    for (const section of [brandSection, resultsSection, filterSection]) {
+      section.width = wide ? 'auto' : '100%'
+      section.flexGrow = wide ? 1 : 0
+      section.flexBasis = wide ? 0 : 'auto'
+    }
+    resultsSection.justifyContent = wide ? 'center' : 'flex-start'
+    filterSection.justifyContent = wide ? 'flex-end' : 'flex-start'
+    filterRow.width = wide ? 24 : '100%'
+
     main.flexDirection = wide ? 'row' : 'column'
     filePanel.width = wide ? '62%' : '100%'
     filePanel.height = wide ? '100%' : '56%'
@@ -500,6 +541,12 @@ export function createDiagnosisDashboard(
     if ((key.ctrl && key.name === 'c') || key.name === 'q') {
       consume(key)
       options.onQuit?.()
+      return
+    }
+
+    if (options.onBack && (key.name === 'escape' || key.name === 'b')) {
+      consume(key)
+      options.onBack()
       return
     }
 

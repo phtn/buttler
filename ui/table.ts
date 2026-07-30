@@ -109,7 +109,7 @@ export function formatPlainReport(analysis: ProjectAnalysis): string {
   const table = formatAnalysisTable(analysis)
   const totals = analysis.totals
   const summary = [
-    `${totals.files} 🅵`,
+    `${totals.files} files`,
     `${totals.imports} imports`,
     `${totals.exports} exports`,
     `${totals.unusedExports} unused`,

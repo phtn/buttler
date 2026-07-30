@@ -7,7 +7,7 @@ import {
   VERSION,
   type OutputMode,
 } from "./core";
-import { runInteractiveDiagnosis } from "./ui/dashboard";
+import { runInteractiveToolbox } from "./ui/launcher";
 import { formatPlainReport } from "./ui/table";
 import { cleanupTempDir } from "./utils/helpers";
 import { cloneGitHubRepo, isGitHubUrl } from "./utils/github";
@@ -80,7 +80,7 @@ export async function main(args = Bun.argv.slice(2)): Promise<number> {
     prepared = await prepareTarget(options.target);
 
     if (mode === "interactive") {
-      await runInteractiveDiagnosis(prepared.path, {
+      await runInteractiveToolbox(prepared.path, {
         exclude: options.exclude,
       });
       return 0;

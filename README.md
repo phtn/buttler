@@ -1,13 +1,17 @@
 ---
 project: buttler
-description: project wide code diagnostics tool
+description: project-wide developer toolbox
 timestamp: timestamp ⸬ Thu Jul 30, 2026  00:50:38 am - +08:00
 ---
 
-Buttler is an interactive code-diagnosis CLI for JavaScript and TypeScript
-projects. It scans static imports, CommonJS `require` calls, exports,
-re-exports, unresolved local modules, parse failures, and unused export
-candidates.
+Buttler is an interactive toolbox for JavaScript and TypeScript projects.
+Morti is a code mortician that scans static imports, CommonJS
+`require` calls, exports, re-exports, unresolved local modules, parse failures,
+and unused export candidates to help identify dead code.
+
+Analyzer scans source code for risky memory, lifecycle, React, complexity, and
+bundle-size patterns. It runs directly in TypeScript, so it does not require a
+Rust toolchain or launch a subprocess during a scan.
 
 The terminal dashboard is built on the official
 [OpenTUI](https://opentui.com/) renderer and runs with Bun.
@@ -20,7 +24,7 @@ bun install
 
 ## Run
 
-Open the interactive dashboard for the current project:
+Open the interactive tool selector for the current project:
 
 ```sh
 bun run index.ts
@@ -34,13 +38,24 @@ bun run index.ts ./src/index.ts
 bun run index.ts https://github.com/owner/repository
 ```
 
-The dashboard supports:
+The tool selector supports:
+
+- Arrow keys or `h`, `j`, `k`, `l` to navigate tools
+- `Enter` to launch the selected tool
+- `q` or `Ctrl-C` to quit
+
+Inside Morti:
 
 - `↑` / `↓` to select a file
 - `/` to focus the live file filter
-- `Esc` to clear the filter
+- `Esc` to clear a focused filter, or return to the tool selector otherwise
+- `b` to return to the tool selector when the filter is not focused
 - `r` to rescan the project
 - `q` or `Ctrl-C` to quit
+
+Analyzer uses the same navigation, filter, rescan, back, and quit shortcuts.
+Its file table groups findings by high, medium, and low severity, with the
+selected file's evidence and suggested action shown in the details panel.
 
 ## Script-friendly output
 
