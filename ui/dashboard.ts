@@ -250,10 +250,10 @@ export function createDiagnosisDashboard(
       fg(theme.accent)('🅿 '),
       fg(theme.border)('⧸'),
       bold(fg(theme.textMuted)(project)),
-      fg(theme.border)('   ⧸   '),
+      fg(theme.border)('  ▸  '),
       bold(fg(theme.text)('⦵')),
       fg(theme.textMuted)(' Morti'),
-      fg(theme.border)('   ⧸   ')
+      fg(theme.border)('  ▸  ')
     ])
   })
 
@@ -265,9 +265,9 @@ export function createDiagnosisDashboard(
   })
   const filterLabel = new TextRenderable(renderer, {
     id: 'filter-label',
-    width: 2,
+    width: 4,
     height: 1,
-    content: new StyledText([bold(fg(theme.info)('⧄  '))])
+    content: new StyledText([fg(theme.border)('❲'), fg(theme.info)('⧸'), fg(theme.border)('❳')])
   })
 
   const filterInput = new InputRenderable(renderer, {
