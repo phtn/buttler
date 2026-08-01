@@ -35,8 +35,8 @@ const GRID_PADDING_X = 2
 
 type LauncherTone = 'normal' | 'active' | 'error'
 
-export const DEVELOPER_TOOLS_CATEGORY = 'Developer tools'
-export const CONFIG_EDITORS_CATEGORY = 'Config editors'
+export const DEVELOPER_TOOLS_CATEGORY = 'Developer Tools'
+export const TERMINAL_CONFIG_CATEGORY = 'Terminal Configs'
 
 export interface ToolDefinition {
   id: string
@@ -90,7 +90,7 @@ export const KITTY_TOOL: ToolDefinition = {
   name: 'kitty',
   glyph: 'K',
   description: 'kitty.conf',
-  category: CONFIG_EDITORS_CATEGORY
+  category: TERMINAL_CONFIG_CATEGORY
 }
 
 export const ALACRITTY_TOOL: ToolDefinition = {
@@ -98,7 +98,7 @@ export const ALACRITTY_TOOL: ToolDefinition = {
   name: 'alacritty',
   glyph: 'A',
   description: 'alacritty.toml',
-  category: CONFIG_EDITORS_CATEGORY
+  category: TERMINAL_CONFIG_CATEGORY
 }
 
 export const HERDR_TOOL: ToolDefinition = {
@@ -106,7 +106,7 @@ export const HERDR_TOOL: ToolDefinition = {
   name: 'herdr',
   glyph: 'H',
   description: 'config.toml',
-  category: CONFIG_EDITORS_CATEGORY
+  category: TERMINAL_CONFIG_CATEGORY
 }
 
 function statusColor(tone: LauncherTone): ThemeColor {
@@ -248,7 +248,7 @@ export function createToolLauncher(
       width: '100%',
       height: 1,
       marginTop: 1,
-      content: new StyledText([bold(fg(theme.textMuted)(category.toUpperCase()))])
+      content: new StyledText([bold(fg(theme.info)(category.toUpperCase()))])
     })
     const grid = new BoxRenderable(renderer, {
       id: `tool-grid-${slug}`,
