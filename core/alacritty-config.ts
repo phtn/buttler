@@ -314,7 +314,7 @@ function parseTomlAssignments(source: string): Record<string, string> {
   return values;
 }
 
-function findAlacrittyConfigIssues(source: string): AlacrittyConfigIssue[] {
+export function findAlacrittyConfigIssues(source: string): AlacrittyConfigIssue[] {
   const issues: AlacrittyConfigIssue[] = [];
   let tablePath: string[] = [];
 

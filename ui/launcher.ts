@@ -72,14 +72,14 @@ export const KITTY_TOOL: ToolDefinition = {
   id: 'kitty',
   name: 'kitty',
   glyph: 'K',
-  description: 'tune your terminal'
+  description: 'kitty.conf'
 }
 
 export const ALACRITTY_TOOL: ToolDefinition = {
   id: 'alacritty',
   name: 'alacritty',
   glyph: 'A',
-  description: 'tune your terminal'
+  description: 'alacritty.toml'
 }
 
 function statusColor(tone: LauncherTone): ThemeColor {
@@ -123,7 +123,10 @@ export function createToolLauncher(
 ): ToolLauncher {
   if (tools.length === 0) throw new Error('The tool launcher requires at least one tool.')
 
-  let selectedIndex = Math.max(0, tools.findIndex((tool) => tool.id === options.initialToolId))
+  let selectedIndex = Math.max(
+    0,
+    tools.findIndex((tool) => tool.id === options.initialToolId)
+  )
   let columns = 1
   let launching = false
   let disposed = false
