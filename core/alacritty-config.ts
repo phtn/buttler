@@ -287,27 +287,27 @@ function unquoteTomlValue(raw: string): string {
   return value;
 }
 
-function parseTomlAssignments(source: string): Record<string, string> {
-  const values = defaultValues();
+function parseTomlAssignments(source: string, includeDefaults = true): Record<string, string> {
+  const values = includeDefaults ? defaultValues() : {};
   let tablePath: string[] = [];
 
   for (const line of source.split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
 
-    const tableMatch = /^\[([^\]]+)\]$/.exec(trimmed);
-    if (tableMatch) {
-      tablePath = tableHeaderPath(tableMatch[1]!);
+    const table = parseTableHeader(trimmed);
+    if (table) {
+      tablePath = table.path;
       continue;
     }
 
-    const assignmentMatch = /^([A-Za-z][\w-]*)\s*=\s*(.+)$/.exec(trimmed);
+    const assignmentMatch = /^([A-Za-z][\w-]*(?:\s*\.\s*[A-Za-z][\w-]*)*)\s*=\s*(.+)$/.exec(trimmed);
     if (!assignmentMatch) continue;
-    const key = assignmentMatch[1]!;
-    const pathParts = [...tablePath, key];
+    const keyParts = assignmentMatch[1]!.split(".").map((part) => part.trim());
+    const pathParts = [...tablePath, ...keyParts];
     const fullPath = normalizePathParts(pathParts);
     if (definitionsByPath.has(fullPath)) {
-      values[fullPath] = unquoteTomlValue(assignmentMatch[2]!);
+      values[fullPath] = unquoteTomlValue(splitValueAndComment(assignmentMatch[2]!).value);
     }
   }
 
@@ -322,9 +322,9 @@ export function findAlacrittyConfigIssues(source: string): AlacrittyConfigIssue[
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
 
-    const tableMatch = /^\[([^\]]+)\]$/.exec(trimmed);
-    if (tableMatch) {
-      tablePath = tableHeaderPath(tableMatch[1]!);
+    const table = parseTableHeader(trimmed);
+    if (table) {
+      tablePath = table.path;
       continue;
     }
 
@@ -383,76 +383,153 @@ function formatLiteral(definition: AlacrittySettingDefinition, value: string): s
   return JSON.stringify(validateLiteral(definition, value));
 }
 
-function buildManagedBlock(values: Record<string, string>, baseValues: Record<string, string>): string {
-  const overrides = ALACRITTY_SETTINGS.filter((definition) => values[definition.path] !== baseValues[definition.path]);
-  if (overrides.length === 0) return "";
-
-  const buckets = new Map<string, AlacrittySettingDefinition[]>();
-  for (const definition of overrides) {
-    const tableKey = normalizePathParts(definition.tablePath);
-    const bucket = buckets.get(tableKey);
-    if (bucket) bucket.push(definition);
-    else buckets.set(tableKey, [definition]);
-  }
-
-  const parts: string[] = [ALACRITTY_MANAGED_START, "#: This block is managed by Buttler's Alacritty tool."];
-  const root = buckets.get("") ?? [];
-  for (const definition of root) {
-    parts.push(`${definition.path} = ${formatLiteral(definition, values[definition.path] ?? definition.defaultValue)}`);
-  }
-
-  const tables = [...buckets.keys()].filter((key) => key.length > 0).sort();
-  for (const tableKey of tables) {
-    parts.push("");
-    parts.push(`[${tableKey}]`);
-    for (const definition of buckets.get(tableKey) ?? []) {
-      parts.push(`${definition.key} = ${formatLiteral(definition, values[definition.path] ?? definition.defaultValue)}`);
-    }
-  }
-
-  parts.push(ALACRITTY_MANAGED_END);
-  return parts.join("\n");
+function parseTableHeader(line: string): { path: string[]; array: boolean } | undefined {
+  const match = /^\s*(\[\[?)([^\]]+)\]\]?\s*(?:#.*)?$/.exec(line);
+  if (!match) return undefined;
+  return { path: tableHeaderPath(match[2]!), array: match[1] === "[[" };
 }
 
-function stripManagedAssignments(source: string, overridePaths: Set<string>): string {
-  if (overridePaths.size === 0) return source;
-
-  const output: string[] = [];
-  let tablePath: string[] = [];
-
-  for (const line of source.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    const tableMatch = /^\[([^\]]+)\]$/.exec(trimmed);
-    if (tableMatch) {
-      tablePath = tableHeaderPath(tableMatch[1]!);
-      output.push(line);
+function splitValueAndComment(raw: string): { value: string; comment: string } {
+  let quote = "";
+  let escaped = false;
+  for (let index = 0; index < raw.length; index += 1) {
+    const character = raw[index]!;
+    if (escaped) {
+      escaped = false;
       continue;
     }
-
-    if (!trimmed || trimmed.startsWith("#")) {
-      output.push(line);
+    if (quote === '"' && character === "\\") {
+      escaped = true;
       continue;
     }
-
-    const assignmentMatch = /^([A-Za-z][\w-]*)\s*=/.exec(trimmed);
-    if (!assignmentMatch) {
-      output.push(line);
+    if (quote) {
+      if (character === quote) quote = "";
       continue;
     }
-
-    const fullPath = normalizePathParts([...tablePath, assignmentMatch[1]!]);
-    if (!overridePaths.has(fullPath)) {
-      output.push(line);
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === "#") {
+      let commentStart = index;
+      while (commentStart > 0 && /\s/.test(raw[commentStart - 1]!)) commentStart -= 1;
+      return { value: raw.slice(0, commentStart).trim(), comment: raw.slice(commentStart) };
     }
   }
+  return { value: raw.trim(), comment: "" };
+}
 
-  return output.join("\n");
+interface TomlAssignment {
+  path: string;
+  prefix: string;
+  comment: string;
+}
+
+function parseTomlAssignment(line: string, tablePath: string[]): TomlAssignment | undefined {
+  const match = /^(\s*[A-Za-z][\w-]*(?:\s*\.\s*[A-Za-z][\w-]*)*\s*=\s*)(.*)$/.exec(line);
+  if (!match) return undefined;
+  const keyExpression = match[1]!.slice(0, match[1]!.lastIndexOf("=")).trim();
+  const keyParts = keyExpression.split(".").map((part) => part.trim());
+  const { comment } = splitValueAndComment(match[2]!);
+  return {
+    path: normalizePathParts([...tablePath, ...keyParts]),
+    prefix: match[1]!,
+    comment,
+  };
+}
+
+function tablePathForLine(lines: string[], targetIndex: number): string[] {
+  let tablePath: string[] = [];
+  for (let index = 0; index < targetIndex; index += 1) {
+    const header = parseTableHeader(lines[index]!);
+    if (header) tablePath = header.path;
+  }
+  return tablePath;
+}
+
+function contentEnd(lines: string[], start: number, end: number): number {
+  let index = end;
+  while (index > start && !lines[index - 1]!.trim()) index -= 1;
+  return index;
+}
+
+function replaceExistingAssignments(lines: string[], literals: Map<string, string>): Set<string> {
+  const locations = new Map<string, number>();
+  let tablePath: string[] = [];
+  for (const [index, line] of lines.entries()) {
+    const header = parseTableHeader(line);
+    if (header) {
+      tablePath = header.path;
+      continue;
+    }
+    const assignment = parseTomlAssignment(line, tablePath);
+    if (assignment && literals.has(assignment.path)) locations.set(assignment.path, index);
+  }
+
+  for (const [settingPath, index] of locations) {
+    const assignment = parseTomlAssignment(lines[index]!, tablePathForLine(lines, index));
+    if (assignment) lines[index] = `${assignment.prefix}${literals.get(settingPath)!}${assignment.comment}`;
+  }
+  return new Set(locations.keys());
+}
+
+function insertAssignment(lines: string[], definition: AlacrittySettingDefinition, literal: string): void {
+  const assignment = `${definition.key} = ${literal}`;
+  if (definition.tablePath.length === 0) {
+    const firstHeader = lines.findIndex((line) => parseTableHeader(line) !== undefined);
+    const boundary = firstHeader === -1 ? lines.length : firstHeader;
+    lines.splice(contentEnd(lines, 0, boundary), 0, assignment);
+    return;
+  }
+
+  const targetTable = normalizePathParts(definition.tablePath);
+  let headerIndex = -1;
+  let tableEnd = lines.length;
+  let firstDescendant = -1;
+  for (const [index, line] of lines.entries()) {
+    const header = parseTableHeader(line);
+    if (!header) continue;
+    const headerPath = normalizePathParts(header.path);
+    if (firstDescendant === -1 && headerPath.startsWith(`${targetTable}.`)) firstDescendant = index;
+    if (headerIndex !== -1) {
+      tableEnd = index;
+      break;
+    }
+    if (headerPath === targetTable && !header.array) headerIndex = index;
+  }
+
+  if (headerIndex !== -1) {
+    lines.splice(contentEnd(lines, headerIndex + 1, tableEnd), 0, assignment);
+    return;
+  }
+
+  const boundary = firstDescendant === -1 ? contentEnd(lines, 0, lines.length) : firstDescendant;
+  const addition = [`[${targetTable}]`, assignment, ""];
+  if (boundary > 0 && lines[boundary - 1]!.trim()) addition.unshift("");
+  lines.splice(boundary, 0, ...addition);
+}
+
+function updateTomlAssignments(
+  source: string,
+  updates: Map<string, { definition: AlacrittySettingDefinition; value: string }>,
+): string {
+  if (updates.size === 0) return source;
+  const eol = source.includes("\r\n") ? "\r\n" : "\n";
+  const lines = source.split(/\r?\n/);
+  const literals = new Map(
+    [...updates].map(([settingPath, update]) => [settingPath, formatLiteral(update.definition, update.value)]),
+  );
+  const replaced = replaceExistingAssignments(lines, literals);
+  for (const [settingPath, update] of updates) {
+    if (!replaced.has(settingPath)) insertAssignment(lines, update.definition, literals.get(settingPath)!);
+  }
+  return lines.join(eol);
 }
 
 export function parseAlacrittyConfig(pathname: string, source: string, exists = true): AlacrittyConfigSnapshot {
   const { baseSource, managedSource } = splitManagedBlock(source);
   const baseValues = parseTomlAssignments(baseSource);
-  const managedValues = parseTomlAssignments(managedSource);
+  const managedValues = parseTomlAssignments(managedSource, false);
   const values = { ...baseValues, ...managedValues };
   return {
     path: pathname,
@@ -492,27 +569,28 @@ export function alacrittyConfigWarnings(values: Record<string, string>): string[
 export function buildAlacrittyConfig(source: string, values: Record<string, string>): string {
   const { baseSource, managedSource } = splitManagedBlock(source);
   const baseValues = parseTomlAssignments(baseSource);
-  const normalizedValues = { ...baseValues };
-
+  const managedValues = parseTomlAssignments(managedSource, false);
+  const currentValues = { ...baseValues, ...managedValues };
+  const requestedUpdates = new Map<string, { definition: AlacrittySettingDefinition; value: string }>();
   for (const definition of ALACRITTY_SETTINGS) {
-    const nextValue = validateLiteral(definition, values[definition.path] ?? baseValues[definition.path] ?? definition.defaultValue);
-    normalizedValues[definition.path] = nextValue;
+    const currentValue = currentValues[definition.path] ?? definition.defaultValue;
+    const requestedValue = values[definition.path] ?? currentValue;
+    if (requestedValue === currentValue) continue;
+    requestedUpdates.set(definition.path, {
+      definition,
+      value: validateLiteral(definition, requestedValue),
+    });
   }
+  if (requestedUpdates.size === 0) return source;
 
-  const overridePaths = new Set(
-    ALACRITTY_SETTINGS.filter((definition) => normalizedValues[definition.path] !== baseValues[definition.path]).map(
-      (definition) => definition.path,
-    ),
-  );
-  const cleanBase = stripManagedAssignments(baseSource, overridePaths).trimEnd();
-  const block = buildManagedBlock(normalizedValues, baseValues);
-
-  if (!block) {
-    if (!managedSource) return source;
-    return cleanBase ? `${cleanBase}\n` : "";
+  const updates = new Map<string, { definition: AlacrittySettingDefinition; value: string }>();
+  for (const [settingPath, value] of Object.entries(managedValues)) {
+    const definition = definitionsByPath.get(settingPath);
+    if (definition) updates.set(settingPath, { definition, value });
   }
+  for (const [settingPath, update] of requestedUpdates) updates.set(settingPath, update);
 
-  return cleanBase ? `${cleanBase}\n\n${block}\n` : `${block}\n`;
+  return updateTomlAssignments(baseSource, updates);
 }
 
 export async function saveAlacrittyConfig(

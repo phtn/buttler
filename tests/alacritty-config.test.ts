@@ -45,7 +45,7 @@ describe("Alacritty configuration model", () => {
     expect(snapshot.managedValues["window.opacity"]).toBe("0.90");
   });
 
-  test("writes only values that differ from the underlying config", () => {
+  test("updates values in place and emits valid TOML", () => {
     const source = [
       "live_config_reload = true",
       "[window]",
@@ -59,17 +59,39 @@ describe("Alacritty configuration model", () => {
     const values = { ...snapshot.values, "window.opacity": "0.85", "font.size": "12.00" };
     const output = buildAlacrittyConfig(source, values);
 
-    expect(output).toContain(ALACRITTY_MANAGED_START);
-    expect(output).toContain("[window]");
+    expect(output).not.toContain(ALACRITTY_MANAGED_START);
+    expect(output.match(/^\[window\]$/gm)).toHaveLength(1);
     expect(output).toContain("opacity = 0.85");
-    expect(output).toContain("[font]");
+    expect(output.match(/^\[font\]$/gm)).toHaveLength(1);
     expect(output).toContain("size = 12.00");
     expect(output).not.toContain("opacity = 1.0");
+    expect(() => Bun.TOML.parse(output)).not.toThrow();
 
     const reparsed = parseAlacrittyConfig("/tmp/alacritty.toml", output);
     expect(reparsed.values["window.opacity"]).toBe("0.85");
     expect(reparsed.values["font.size"]).toBe("12.00");
-    expect(buildAlacrittyConfig(output, reparsed.baseValues)).toBe(source);
+    expect(buildAlacrittyConfig(output, reparsed.values)).toBe(output);
+  });
+
+  test("migrates legacy Buttler overrides into their original TOML tables on save", () => {
+    const source = [
+      "[window]",
+      "opacity = 1.0 # keep this note",
+      "",
+      ALACRITTY_MANAGED_START,
+      "[window]",
+      "opacity = 0.90",
+      "#: }}} Buttler managed settings",
+      "",
+    ].join("\n");
+    const snapshot = parseAlacrittyConfig("/tmp/alacritty.toml", source);
+    const output = buildAlacrittyConfig(source, { ...snapshot.values, "window.blur": "true" });
+
+    expect(output).not.toContain(ALACRITTY_MANAGED_START);
+    expect(output.match(/^\[window\]$/gm)).toHaveLength(1);
+    expect(output).toContain("opacity = 0.90 # keep this note");
+    expect(output).toContain("blur = true");
+    expect(() => Bun.TOML.parse(output)).not.toThrow();
   });
 
   test("validates and adjusts curated values", () => {

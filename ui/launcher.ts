@@ -14,14 +14,17 @@ import {
   analyzeCodeHealth,
   analyzeProject,
   loadAlacrittyConfig,
+  loadHerdrConfig,
   loadKittyConfig,
   VERSION,
   type AnalyzeProjectOptions
 } from '../core'
+import { createAlacrittyDashboard } from './alacritty-dashboard'
 import { createAnalyzerDashboard } from './analyzer-dashboard'
 import { createDiagnosisDashboard } from './dashboard'
-import { createAlacrittyDashboard } from './alacritty-dashboard'
+import { createHerdrDashboard } from './herdr-dashboard'
 import { createKittyDashboard } from './kitty-dashboard'
+import { createMemoryDashboard } from './memory-dashboard'
 import { getVisualWidth, padToVisualWidth, truncateToVisualWidth } from './table'
 import { theme, type ThemeColor } from './theme'
 
@@ -32,11 +35,15 @@ const GRID_PADDING_X = 2
 
 type LauncherTone = 'normal' | 'active' | 'error'
 
+export const DEVELOPER_TOOLS_CATEGORY = 'Developer tools'
+export const CONFIG_EDITORS_CATEGORY = 'Config editors'
+
 export interface ToolDefinition {
   id: string
   name: string
   glyph: string
   description: string
+  category?: string
 }
 
 export interface ToolLauncherOptions {
@@ -58,28 +65,48 @@ export const MORTI_TOOL: ToolDefinition = {
   id: 'morti',
   name: 'morti',
   glyph: '⦵',
-  description: 'clear dead code'
+  description: 'clear dead code',
+  category: DEVELOPER_TOOLS_CATEGORY
 }
 
 export const ANALYZER_TOOL: ToolDefinition = {
   id: 'analyzer',
   name: 'analyzer',
   glyph: '⌁',
-  description: 'find risky patterns'
+  description: 'find risky patterns',
+  category: DEVELOPER_TOOLS_CATEGORY
+}
+
+export const MEMORY_TOOL: ToolDefinition = {
+  id: 'memory',
+  name: 'memory',
+  glyph: '∿',
+  description: 'watch runtime growth',
+  category: DEVELOPER_TOOLS_CATEGORY
 }
 
 export const KITTY_TOOL: ToolDefinition = {
   id: 'kitty',
   name: 'kitty',
   glyph: 'K',
-  description: 'kitty.conf'
+  description: 'kitty.conf',
+  category: CONFIG_EDITORS_CATEGORY
 }
 
 export const ALACRITTY_TOOL: ToolDefinition = {
   id: 'alacritty',
   name: 'alacritty',
   glyph: 'A',
-  description: 'alacritty.toml'
+  description: 'alacritty.toml',
+  category: CONFIG_EDITORS_CATEGORY
+}
+
+export const HERDR_TOOL: ToolDefinition = {
+  id: 'herdr',
+  name: 'herdr',
+  glyph: 'H',
+  description: 'config.toml',
+  category: CONFIG_EDITORS_CATEGORY
 }
 
 function statusColor(tone: LauncherTone): ThemeColor {
@@ -127,7 +154,6 @@ export function createToolLauncher(
     0,
     tools.findIndex((tool) => tool.id === options.initialToolId)
   )
-  let columns = 1
   let launching = false
   let disposed = false
 
@@ -204,19 +230,48 @@ export function createToolLauncher(
     justifyContent: 'flex-start',
     backgroundColor: theme.background
   })
-  const grid = new BoxRenderable(renderer, {
-    id: 'tool-grid',
-    width: '100%',
-    paddingTop: 1,
-    height: TOOL_TILE_HEIGHT,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-start',
-    gap: TOOL_TILE_GAP,
-    backgroundColor: theme.background
+  const categoryIndexes = new Map<string, number[]>()
+  for (const [index, tool] of tools.entries()) {
+    const category = tool.category ?? DEVELOPER_TOOLS_CATEGORY
+    const indexes = categoryIndexes.get(category)
+    if (indexes) indexes.push(index)
+    else categoryIndexes.set(category, [index])
+  }
+
+  const categoryLayouts = [...categoryIndexes].map(([category, indexes]) => {
+    const slug = category
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+    const heading = new TextRenderable(renderer, {
+      id: `tool-category-${slug}`,
+      width: '100%',
+      height: 1,
+      marginTop: 1,
+      content: new StyledText([bold(fg(theme.textMuted)(category.toUpperCase()))])
+    })
+    const grid = new BoxRenderable(renderer, {
+      id: `tool-grid-${slug}`,
+      width: '100%',
+      paddingTop: 1,
+      height: TOOL_TILE_HEIGHT + 1,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'flex-start',
+      gap: TOOL_TILE_GAP,
+      backgroundColor: theme.background
+    })
+    body.add(heading)
+    body.add(grid)
+    return { grid, indexes }
   })
 
-  const tiles = tools.map((tool) => {
+  const gridByToolIndex = new Map<number, BoxRenderable>()
+  for (const layout of categoryLayouts) {
+    for (const index of layout.indexes) gridByToolIndex.set(index, layout.grid)
+  }
+
+  const tiles = tools.map((tool, index) => {
     const tile = new BoxRenderable(renderer, {
       id: `tool-${tool.id}`,
       width: TOOL_TILE_WIDTH,
@@ -235,11 +290,9 @@ export function createToolLauncher(
       content: toolThumbnail(tool)
     })
     tile.add(thumbnail)
-    grid.add(tile)
+    gridByToolIndex.get(index)!.add(tile)
     return tile
   })
-
-  body.add(grid)
 
   const footer = new BoxRenderable(renderer, {
     id: 'launcher-footer',
@@ -289,18 +342,41 @@ export function createToolLauncher(
     setStatus(`${tools[selectedIndex]!.name} selected`, 'active')
   }
 
+  let layoutRows: number[][] = []
+  const visualOrder = categoryLayouts.flatMap((layout) => layout.indexes)
+
   const updateGrid = (): void => {
     const availableWidth = Math.max(TOOL_TILE_WIDTH, renderer.terminalWidth - GRID_PADDING_X * 2)
-    columns = Math.max(1, Math.floor((availableWidth + TOOL_TILE_GAP) / (TOOL_TILE_WIDTH + TOOL_TILE_GAP)))
-    const rows = Math.ceil(tools.length / columns)
-    grid.height = rows * TOOL_TILE_HEIGHT + Math.max(0, rows - 1) * TOOL_TILE_GAP
+    const columns = Math.max(1, Math.floor((availableWidth + TOOL_TILE_GAP) / (TOOL_TILE_WIDTH + TOOL_TILE_GAP)))
+    layoutRows = []
+    for (const layout of categoryLayouts) {
+      const rows: number[][] = []
+      for (let index = 0; index < layout.indexes.length; index += columns) {
+        rows.push(layout.indexes.slice(index, index + columns))
+      }
+      layoutRows.push(...rows)
+      layout.grid.height = 1 + rows.length * TOOL_TILE_HEIGHT + Math.max(0, rows.length - 1) * TOOL_TILE_GAP
+    }
   }
 
   const select = (nextIndex: number): void => {
-    const clampedIndex = Math.max(0, Math.min(tools.length - 1, nextIndex))
-    if (clampedIndex === selectedIndex) return
-    selectedIndex = clampedIndex
+    if (!tools[nextIndex] || nextIndex === selectedIndex) return
+    selectedIndex = nextIndex
     refreshSelection()
+  }
+
+  const moveHorizontal = (direction: -1 | 1): void => {
+    const position = visualOrder.indexOf(selectedIndex)
+    select(visualOrder[Math.max(0, Math.min(visualOrder.length - 1, position + direction))]!)
+  }
+
+  const moveVertical = (direction: -1 | 1): void => {
+    const rowIndex = layoutRows.findIndex((row) => row.includes(selectedIndex))
+    if (rowIndex === -1) return
+    const nextRow = layoutRows[rowIndex + direction]
+    if (!nextRow) return
+    const column = layoutRows[rowIndex]!.indexOf(selectedIndex)
+    select(nextRow[Math.min(column, nextRow.length - 1)]!)
   }
 
   const launchSelected = (): void => {
@@ -336,13 +412,13 @@ export function createToolLauncher(
     if (launching) return
 
     if (key.name === 'left' || key.name === 'h') {
-      select(selectedIndex - 1)
+      moveHorizontal(-1)
     } else if (key.name === 'right' || key.name === 'l') {
-      select(selectedIndex + 1)
+      moveHorizontal(1)
     } else if (key.name === 'up' || key.name === 'k') {
-      select(selectedIndex - columns)
+      moveVertical(-1)
     } else if (key.name === 'down' || key.name === 'j') {
-      select(selectedIndex + columns)
+      moveVertical(1)
     } else if (key.name === 'return' || key.name === 'enter' || key.sequence === '\r') {
       launchSelected()
     } else {
@@ -398,12 +474,16 @@ export async function runInteractiveToolbox(target: string, options: AnalyzeProj
 
   const showLauncher = (): void => {
     activeDispose?.()
-    launcher = createToolLauncher(renderer, [MORTI_TOOL, ANALYZER_TOOL, KITTY_TOOL, ALACRITTY_TOOL], {
-      projectName: path.basename(path.resolve(target)) || target,
-      initialToolId: lastToolId,
-      onLaunch: openTool,
-      onQuit: () => renderer.destroy()
-    })
+    launcher = createToolLauncher(
+      renderer,
+      [MORTI_TOOL, ANALYZER_TOOL, MEMORY_TOOL, KITTY_TOOL, ALACRITTY_TOOL, HERDR_TOOL],
+      {
+        projectName: path.basename(path.resolve(target)) || target,
+        initialToolId: lastToolId,
+        onLaunch: openTool,
+        onQuit: () => renderer.destroy()
+      }
+    )
     activeDispose = launcher.dispose
   }
 
@@ -438,6 +518,16 @@ export async function runInteractiveToolbox(target: string, options: AnalyzeProj
       return
     }
 
+    if (tool.id === MEMORY_TOOL.id) {
+      const dashboard = createMemoryDashboard(renderer, {
+        onQuit: () => renderer.destroy(),
+        onBack: showLauncher
+      })
+      launcher?.dispose()
+      activeDispose = dashboard.dispose
+      return
+    }
+
     if (tool.id === KITTY_TOOL.id) {
       const config = await loadKittyConfig()
       if (renderer.isDestroyed) return
@@ -456,6 +546,19 @@ export async function runInteractiveToolbox(target: string, options: AnalyzeProj
       if (renderer.isDestroyed) return
 
       const dashboard = createAlacrittyDashboard(renderer, config, {
+        onQuit: () => renderer.destroy(),
+        onBack: showLauncher
+      })
+      launcher?.dispose()
+      activeDispose = dashboard.dispose
+      return
+    }
+
+    if (tool.id === HERDR_TOOL.id) {
+      const config = await loadHerdrConfig()
+      if (renderer.isDestroyed) return
+
+      const dashboard = createHerdrDashboard(renderer, config, {
         onQuit: () => renderer.destroy(),
         onBack: showLauncher
       })

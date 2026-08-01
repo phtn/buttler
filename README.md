@@ -13,6 +13,11 @@ Analyzer scans source code for risky memory, lifecycle, React, complexity, and
 bundle-size patterns. It runs directly in TypeScript, so it does not require a
 Rust toolchain or launch a subprocess during a scan.
 
+Memory watches the running Buttler process for sustained heap, RSS, and
+external-memory growth. It reports a confidence-rated signal after collecting
+enough baseline data; that signal is evidence to investigate with an inspector
+or heap snapshot, not proof of a leak.
+
 Kitty is a focused editor for the terminal's most useful color, font, cursor,
 window, tab, and behavior settings. It reads the effective values from
 `~/.config/kitty/kitty.conf` while preserving the rest of the file.
@@ -20,6 +25,11 @@ window, tab, and behavior settings. It reads the effective values from
 Alacritty is the same kind of editor for `~/.config/alacritty/alacritty.toml`,
 covering a curated set of window, font, cursor, scrolling, selection, and color
 settings.
+
+Herdr edits `~/.config/herdr/config.toml`, covering its common theme, terminal,
+update, UI, notification, session, worktree, remote, and experimental settings,
+plus the complete standard keymap. User-defined `[[keys.command]]` blocks remain
+intact.
 
 The terminal dashboard is built on the official
 [OpenTUI](https://opentui.com/) renderer and runs with Bun.
@@ -48,6 +58,7 @@ bun run index.ts https://github.com/owner/repository
 
 The tool selector supports:
 
+- Developer tools and config editors are shown in separate categories
 - Arrow keys or `h`, `j`, `k`, `l` to navigate tools
 - `Enter` to launch the selected tool
 - `q` or `Ctrl-C` to quit
@@ -64,6 +75,13 @@ Inside Morti:
 Analyzer uses the same navigation, filter, rescan, back, and quit shortcuts.
 Its file table groups findings by high, medium, and low severity, with the
 selected file's evidence and suggested action shown in the details panel.
+
+Inside Memory:
+
+- `Space` pauses or resumes sampling
+- `r` clears the samples and starts a fresh baseline
+- `g` forces a Bun garbage collection and immediately samples again
+- `Esc` or `b` returns to the tool selector; `q` quits
 
 Inside Kitty:
 
@@ -92,6 +110,21 @@ Inside Alacritty:
 Alacritty changes are written directly into the TOML file while preserving the
 rest of the config. Saves are atomic, refuse to overwrite a file changed by
 another process, and copy the previous file to `alacritty.toml.buttler.bak`.
+
+Inside Herdr:
+
+- `↑` / `↓` selects a setting, including every standard keybinding
+- `←` / `→` adjusts numbers and predefined choices
+- `Enter` edits an exact value; keybindings accept arrays such as
+  `["prefix+n", "ctrl+alt+n"]`
+- `x` resets the selected setting to its saved value
+- `s` saves, `r` reloads values from disk, and `p` edits the active config path
+- `Esc` or `b` returns to the tool selector; `q` quits
+
+Herdr changes preserve settings outside Buttler's editor as well as custom
+`[[keys.command]]` tables. Saves are atomic, reject stale snapshots, and back up
+the previous file to `config.toml.buttler.bak`. Apply saved changes from Herdr's
+`reload config` menu item or with `herdr server reload-config`.
 
 ## Script-friendly output
 

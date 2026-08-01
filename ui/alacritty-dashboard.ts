@@ -463,9 +463,9 @@ export function createAlacrittyDashboard(
   const resetSelected = (): void => {
     const definition = selectedDefinition();
     discardArmed = false;
-    values[definition.path] = snapshot.baseValues[definition.path] ?? definition.defaultValue;
+    values[definition.path] = snapshot.values[definition.path] ?? definition.defaultValue;
     refreshRows();
-    setStatus(`${definition.label} reset to underlying config`, "warning");
+    setStatus(`${definition.label} reset to saved config`, "warning");
   };
 
   const submitPath = async (): Promise<void> => {

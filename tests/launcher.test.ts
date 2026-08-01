@@ -5,8 +5,11 @@ import { VERSION } from "../core";
 import {
   ALACRITTY_TOOL,
   ANALYZER_TOOL,
+  CONFIG_EDITORS_CATEGORY,
   createToolLauncher,
+  HERDR_TOOL,
   KITTY_TOOL,
+  MEMORY_TOOL,
   MORTI_TOOL,
   type ToolDefinition,
 } from "../ui/launcher";
@@ -14,13 +17,16 @@ import {
 const tools: ToolDefinition[] = [
   MORTI_TOOL,
   ANALYZER_TOOL,
+  MEMORY_TOOL,
   KITTY_TOOL,
   ALACRITTY_TOOL,
+  HERDR_TOOL,
   ...Array.from({ length: 4 }, (_, index) => ({
     id: `tool-${index + 1}`,
     name: `Tool ${index + 1}`,
     glyph: "◆",
     description: "Does a thing",
+    category: CONFIG_EDITORS_CATEGORY,
   })),
 ];
 
@@ -41,7 +47,7 @@ test("tool launcher renders square tiles and supports arrow and Vim navigation",
   try {
     await setup.flush();
     const frame = setup.captureCharFrame();
-    const grid = launcher.root.findDescendantById("tool-grid") as BoxRenderable;
+    const grid = launcher.root.findDescendantById("tool-grid-developer-tools") as BoxRenderable;
     const mortiTile = launcher.root.findDescendantById("tool-morti") as BoxRenderable;
     const brand = launcher.root.findDescendantById("launcher-brand") as TextRenderable;
     const introduction = launcher.root.findDescendantById("launcher-introduction") as TextRenderable;
@@ -55,9 +61,15 @@ test("tool launcher renders square tiles and supports arrow and Vim navigation",
     expect(frame).toContain("clear dead code");
     expect(frame).toContain("ANALYZER");
     expect(frame).toContain("find risky patterns");
+    expect(frame).toContain("MEMORY");
+    expect(frame).toContain("watch runtime growth");
+    expect(frame).toContain("DEVELOPER TOOLS");
+    expect(frame).toContain("CONFIG EDITORS");
     expect(frame).toContain("KITTY");
-    expect(frame).toContain("tune your terminal");
+    expect(frame).toContain("kitty.conf");
     expect(frame).toContain("ALACRITTY");
+    expect(frame).toContain("HERDR");
+    expect(frame).toContain("config.toml");
     expect(frame.split("\n").find((line) => line.includes("╔"))).not.toContain("Morti");
     expect(frame).toContain("⛖ navigate");
     expect(brand.y).toBe(introduction.y);

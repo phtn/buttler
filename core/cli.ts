@@ -112,8 +112,11 @@ Options
 Interactive keys
   Toolbox  arrows or h/j/k/l navigate   Enter launch   q quit
   Morti    ↑/↓ navigate   / filter   r rescan   Esc/b back   q quit
+  Analyzer ↑/↓ navigate   / filter   r rescan   Esc/b back   q quit
+  Memory   Space pause   r reset   g force GC/sample   Esc/b back   q quit
   Kitty    ↑/↓ select   ←/→ adjust   Enter edit   s save   r reload   p path
   Alacritty ↑/↓ select   ←/→ adjust   Enter edit   s save   r reload   p path
+  Herdr    ↑/↓ select   ←/→ adjust   Enter edit   s save   r reload   p path
 
 Examples
   buttler

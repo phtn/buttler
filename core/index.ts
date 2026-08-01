@@ -39,6 +39,24 @@ export {
 } from "./cli";
 
 export {
+  analyzeMemoryMeasurements,
+  DEFAULT_MEMORY_WINDOW_SIZE,
+  forceGarbageCollection,
+  MemoryMonitor,
+  MIN_MEMORY_DURATION_MS,
+  MIN_MEMORY_SAMPLES,
+  type AnalyzeMemoryOptions,
+  type MemoryAnalysis,
+  type MemoryConfidence,
+  type MemoryMeasurement,
+  type MemoryMetric,
+  type MemoryMetricTrend,
+  type MemoryMonitorOptions,
+  type MemorySampler,
+  type MemoryVerdict,
+} from "./memory";
+
+export {
   adjustAlacrittyValue,
   alacrittyConfigWarnings,
   alacrittySetting,
@@ -83,3 +101,24 @@ export {
   type KittySettingGroup,
   type KittySettingKind,
 } from "./kitty-config";
+
+export {
+  adjustHerdrValue,
+  buildHerdrConfig,
+  defaultHerdrConfigPath,
+  findHerdrConfigIssues,
+  HERDR_SETTINGS,
+  herdrConfigWarnings,
+  herdrSetting,
+  loadHerdrConfig,
+  parseHerdrConfig,
+  saveHerdrConfig,
+  validateHerdrValue,
+  type HerdrConfigIssue,
+  type HerdrConfigSaveResult,
+  type HerdrConfigSnapshot,
+  type HerdrLiteralKind,
+  type HerdrSettingDefinition,
+  type HerdrSettingGroup,
+  type HerdrSettingKind,
+} from "./herdr-config";

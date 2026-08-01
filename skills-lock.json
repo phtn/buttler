@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "gleamability": {
+      "source": "phtn/gleamability",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "bdecf4534d4630de7db7fcf7ce062a2d87582ad3afd77260cc2a9a2dd985728e"
+    }
+  }
+}
