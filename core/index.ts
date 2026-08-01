@@ -39,6 +39,29 @@ export {
 } from "./cli";
 
 export {
+  adjustAlacrittyValue,
+  alacrittyConfigWarnings,
+  alacrittySetting,
+  buildAlacrittyConfig,
+  defaultAlacrittyConfigPath,
+  ALACRITTY_MANAGED_END,
+  ALACRITTY_MANAGED_START,
+  ALACRITTY_SETTINGS,
+  findAlacrittyConfigIssues,
+  loadAlacrittyConfig,
+  parseAlacrittyConfig,
+  saveAlacrittyConfig,
+  validateAlacrittyValue,
+  type AlacrittyConfigIssue,
+  type AlacrittyConfigSaveResult,
+  type AlacrittyConfigSnapshot,
+  type AlacrittyLiteralKind,
+  type AlacrittySettingDefinition,
+  type AlacrittySettingGroup,
+  type AlacrittySettingKind,
+} from "./alacritty-config";
+
+export {
   adjustKittyValue,
   buildKittyConfig,
   defaultKittyConfigPath,

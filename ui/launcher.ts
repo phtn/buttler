@@ -10,9 +10,17 @@ import {
   type KeyEvent
 } from '@opentui/core'
 import path from 'node:path'
-import { analyzeCodeHealth, analyzeProject, loadKittyConfig, VERSION, type AnalyzeProjectOptions } from '../core'
+import {
+  analyzeCodeHealth,
+  analyzeProject,
+  loadAlacrittyConfig,
+  loadKittyConfig,
+  VERSION,
+  type AnalyzeProjectOptions
+} from '../core'
 import { createAnalyzerDashboard } from './analyzer-dashboard'
 import { createDiagnosisDashboard } from './dashboard'
+import { createAlacrittyDashboard } from './alacritty-dashboard'
 import { createKittyDashboard } from './kitty-dashboard'
 import { getVisualWidth, padToVisualWidth, truncateToVisualWidth } from './table'
 import { theme, type ThemeColor } from './theme'
@@ -64,6 +72,13 @@ export const KITTY_TOOL: ToolDefinition = {
   id: 'kitty',
   name: 'kitty',
   glyph: 'K',
+  description: 'tune your terminal'
+}
+
+export const ALACRITTY_TOOL: ToolDefinition = {
+  id: 'alacritty',
+  name: 'alacritty',
+  glyph: 'A',
   description: 'tune your terminal'
 }
 
@@ -380,7 +395,7 @@ export async function runInteractiveToolbox(target: string, options: AnalyzeProj
 
   const showLauncher = (): void => {
     activeDispose?.()
-    launcher = createToolLauncher(renderer, [MORTI_TOOL, ANALYZER_TOOL, KITTY_TOOL], {
+    launcher = createToolLauncher(renderer, [MORTI_TOOL, ANALYZER_TOOL, KITTY_TOOL, ALACRITTY_TOOL], {
       projectName: path.basename(path.resolve(target)) || target,
       initialToolId: lastToolId,
       onLaunch: openTool,
@@ -425,6 +440,19 @@ export async function runInteractiveToolbox(target: string, options: AnalyzeProj
       if (renderer.isDestroyed) return
 
       const dashboard = createKittyDashboard(renderer, config, {
+        onQuit: () => renderer.destroy(),
+        onBack: showLauncher
+      })
+      launcher?.dispose()
+      activeDispose = dashboard.dispose
+      return
+    }
+
+    if (tool.id === ALACRITTY_TOOL.id) {
+      const config = await loadAlacrittyConfig()
+      if (renderer.isDestroyed) return
+
+      const dashboard = createAlacrittyDashboard(renderer, config, {
         onQuit: () => renderer.destroy(),
         onBack: showLauncher
       })

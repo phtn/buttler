@@ -14,16 +14,16 @@ import {
   type TextChunk,
 } from "@opentui/core";
 import {
-  adjustKittyValue,
-  buildKittyConfig,
-  KITTY_SETTINGS,
-  kittyConfigWarnings,
-  loadKittyConfig,
-  saveKittyConfig,
-  validateKittyValue,
-  type KittyConfigSaveResult,
-  type KittyConfigSnapshot,
-  type KittySettingDefinition,
+  adjustAlacrittyValue,
+  buildAlacrittyConfig,
+  ALACRITTY_SETTINGS,
+  alacrittyConfigWarnings,
+  loadAlacrittyConfig,
+  saveAlacrittyConfig,
+  validateAlacrittyValue,
+  type AlacrittyConfigSaveResult,
+  type AlacrittyConfigSnapshot,
+  type AlacrittySettingDefinition,
 } from "../core";
 import { padToVisualWidth, truncateToVisualWidth } from "./table";
 import { theme, type ThemeColor } from "./theme";
@@ -32,17 +32,17 @@ type StatusTone = "normal" | "success" | "warning" | "error";
 
 const WIDE_LAYOUT_MIN_WIDTH = 90;
 
-export interface KittyDashboardOptions {
+export interface AlacrittyDashboardOptions {
   onQuit?: () => void;
   onBack?: () => void;
   onSave?: (
-    snapshot: KittyConfigSnapshot,
+    snapshot: AlacrittyConfigSnapshot,
     values: Record<string, string>,
-  ) => Promise<KittyConfigSaveResult>;
-  onReload?: () => Promise<KittyConfigSnapshot>;
+  ) => Promise<AlacrittyConfigSaveResult>;
+  onReload?: () => Promise<AlacrittyConfigSnapshot>;
 }
 
-export interface KittyDashboard {
+export interface AlacrittyDashboard {
   readonly root: BoxRenderable;
   readonly settingList: SelectRenderable;
   readonly configPathInput: InputRenderable;
@@ -70,25 +70,25 @@ function pushLine(chunks: TextChunk[], value = "", color: ThemeColor = theme.tex
 }
 
 function sourceLabel(
-  definition: KittySettingDefinition,
-  snapshot: KittyConfigSnapshot,
+  definition: AlacrittySettingDefinition,
+  snapshot: AlacrittyConfigSnapshot,
   values: Record<string, string>,
 ): { label: string; color: ThemeColor } {
-  if (values[definition.key] !== snapshot.values[definition.key]) {
+  if (values[definition.path] !== snapshot.values[definition.path]) {
     return { label: "unsaved change", color: theme.warning };
   }
-  if (snapshot.managedValues[definition.key] !== undefined) {
+  if (snapshot.managedValues[definition.path] !== undefined) {
     return { label: "Buttler override", color: theme.accent };
   }
-  if (snapshot.baseValues[definition.key] !== definition.defaultValue) {
-    return { label: "kitty.conf", color: theme.info };
+  if (snapshot.baseValues[definition.path] !== definition.defaultValue) {
+    return { label: "alacritty.toml", color: theme.info };
   }
-  return { label: "Kitty default", color: theme.textMuted };
+  return { label: "Alacritty default", color: theme.textMuted };
 }
 
 function settingDetail(
-  definition: KittySettingDefinition,
-  snapshot: KittyConfigSnapshot,
+  definition: AlacrittySettingDefinition,
+  snapshot: AlacrittyConfigSnapshot,
   values: Record<string, string>,
 ): StyledText {
   const chunks: TextChunk[] = [];
@@ -98,12 +98,12 @@ function settingDetail(
   pushLine(chunks);
   chunks.push(bold(fg(theme.text)(definition.label)));
   pushLine(chunks);
-  pushLine(chunks, definition.key, theme.textMuted);
+  pushLine(chunks, definition.path, theme.textMuted);
   pushLine(chunks);
   pushLine(chunks, definition.description);
   pushLine(chunks);
   chunks.push(fg(theme.textMuted)("Value  "));
-  chunks.push(bold(fg(theme.text)(values[definition.key] ?? definition.defaultValue)));
+  chunks.push(bold(fg(theme.text)(values[definition.path] ?? definition.defaultValue)));
   pushLine(chunks);
   chunks.push(fg(theme.textMuted)("Source "));
   chunks.push(fg(source.color)(source.label));
@@ -121,7 +121,7 @@ function settingDetail(
     pushLine(chunks, `Range: ${range}  ·  Step: ${definition.step ?? 1}`, theme.textMuted);
   }
 
-  const warnings = kittyConfigWarnings(values);
+  const warnings = alacrittyConfigWarnings(values);
   if (warnings.length > 0 || snapshot.issues.length > 0) {
     pushLine(chunks);
     for (const warning of warnings) pushLine(chunks, `! ${warning}`, theme.warning);
@@ -139,7 +139,7 @@ function settingDetail(
   return new StyledText(chunks);
 }
 
-function settingRow(definition: KittySettingDefinition, value: string, width: number): string {
+function settingRow(definition: AlacrittySettingDefinition, value: string, width: number): string {
   const groupWidth = 9;
   const valueWidth = Math.max(8, Math.min(24, Math.floor(width * 0.34)));
   const labelWidth = Math.max(8, width - groupWidth - valueWidth - 2);
@@ -150,11 +150,11 @@ function settingRow(definition: KittySettingDefinition, value: string, width: nu
   ].join(" ");
 }
 
-export function createKittyDashboard(
+export function createAlacrittyDashboard(
   renderer: CliRenderer,
-  initialSnapshot: KittyConfigSnapshot,
-  options: KittyDashboardOptions = {},
-): KittyDashboard {
+  initialSnapshot: AlacrittyConfigSnapshot,
+  options: AlacrittyDashboardOptions = {},
+): AlacrittyDashboard {
   let snapshot = initialSnapshot;
   let values = { ...snapshot.values };
   let saving = false;
@@ -163,7 +163,7 @@ export function createKittyDashboard(
   let discardArmed = false;
 
   const root = new BoxRenderable(renderer, {
-    id: "kitty-app",
+    id: "alacritty-app",
     width: "100%",
     height: "100%",
     flexDirection: "column",
@@ -171,7 +171,7 @@ export function createKittyDashboard(
   });
 
   const header = new BoxRenderable(renderer, {
-    id: "kitty-header",
+    id: "alacritty-header",
     width: "100%",
     height: 1,
     paddingX: 1,
@@ -179,14 +179,14 @@ export function createKittyDashboard(
     backgroundColor: theme.surfaceRaised,
   });
   const brandSection = new BoxRenderable(renderer, {
-    id: "kitty-brand-section",
+    id: "alacritty-brand-section",
     height: 1,
     flexGrow: 1,
     flexBasis: 0,
     flexDirection: "row",
   });
   const pathSection = new BoxRenderable(renderer, {
-    id: "kitty-path-section",
+    id: "alacritty-path-section",
     height: 1,
     flexGrow: 1,
     flexBasis: 0,
@@ -194,7 +194,7 @@ export function createKittyDashboard(
     justifyContent: "center",
   });
   const summarySection = new BoxRenderable(renderer, {
-    id: "kitty-summary-section",
+    id: "alacritty-summary-section",
     height: 1,
     flexGrow: 1,
     flexBasis: 0,
@@ -202,17 +202,17 @@ export function createKittyDashboard(
     justifyContent: "flex-end",
   });
   const brand = new TextRenderable(renderer, {
-    id: "kitty-brand",
+    id: "alacritty-brand",
     height: 1,
     content: new StyledText([
       fg(theme.accent)("🅿 "),
       fg(theme.border)("⧸  ▸  "),
-      bold(fg(theme.text)("K")),
-      fg(theme.textMuted)(" Kitty"),
+      bold(fg(theme.text)("A")),
+      fg(theme.textMuted)(" Alacritty"),
     ]),
   });
   const configPathLabel = new TextRenderable(renderer, {
-    id: "kitty-config-path-label",
+    id: "alacritty-config-path-label",
     width: 8,
     height: 1,
     content: new StyledText([
@@ -222,10 +222,10 @@ export function createKittyDashboard(
     ]),
   });
   const configPathInput = new InputRenderable(renderer, {
-    id: "kitty-config-path",
+    id: "alacritty-config-path",
     flexGrow: 1,
     value: snapshot.path,
-    placeholder: "kitty.conf path",
+    placeholder: "alacritty.toml path",
     textColor: theme.textMuted,
     focusedTextColor: theme.text,
     backgroundColor: theme.surfaceRaised,
@@ -233,7 +233,7 @@ export function createKittyDashboard(
     cursorColor: theme.accent,
   });
   const summary = new TextRenderable(renderer, {
-    id: "kitty-summary",
+    id: "alacritty-summary",
     height: 1,
     content: "",
   });
@@ -246,24 +246,24 @@ export function createKittyDashboard(
   header.add(summarySection);
 
   const main = new BoxRenderable(renderer, {
-    id: "kitty-main",
+    id: "alacritty-main",
     width: "100%",
     flexGrow: 1,
     flexDirection: "row",
   });
   const settingsPanel = new BoxRenderable(renderer, {
-    id: "kitty-settings-panel",
+    id: "alacritty-settings-panel",
     width: "56%",
     height: "100%",
     border: true,
     borderStyle: "single",
     borderColor: theme.border,
-    title: ` SETTINGS · ${KITTY_SETTINGS.length} `,
+    title: ` SETTINGS · ${ALACRITTY_SETTINGS.length} `,
     titleColor: theme.textMuted,
     backgroundColor: theme.surface,
   });
   const settingList = new SelectRenderable(renderer, {
-    id: "kitty-setting-list",
+    id: "alacritty-setting-list",
     width: "100%",
     height: "100%",
     options: [],
@@ -281,7 +281,7 @@ export function createKittyDashboard(
   settingsPanel.add(settingList);
 
   const detailPanel = new BoxRenderable(renderer, {
-    id: "kitty-detail-panel",
+    id: "alacritty-detail-panel",
     width: "44%",
     height: "100%",
     paddingX: 1,
@@ -294,7 +294,7 @@ export function createKittyDashboard(
     backgroundColor: theme.surface,
   });
   const detail = new TextRenderable(renderer, {
-    id: "kitty-detail",
+    id: "alacritty-detail",
     width: "100%",
     flexGrow: 1,
     height: "auto",
@@ -303,13 +303,13 @@ export function createKittyDashboard(
     fg: theme.text,
   });
   const editorLabel = new TextRenderable(renderer, {
-    id: "kitty-editor-label",
+    id: "alacritty-editor-label",
     width: "100%",
     height: 1,
     content: new StyledText([bold(fg(theme.textMuted)(" EDIT VALUE "))]),
   });
   const valueInput = new InputRenderable(renderer, {
-    id: "kitty-value-input",
+    id: "alacritty-value-input",
     width: "100%",
     value: "",
     placeholder: "value",
@@ -326,7 +326,7 @@ export function createKittyDashboard(
   main.add(detailPanel);
 
   const footer = new BoxRenderable(renderer, {
-    id: "kitty-footer",
+    id: "alacritty-footer",
     width: "100%",
     height: 1,
     paddingX: 1,
@@ -334,7 +334,7 @@ export function createKittyDashboard(
     backgroundColor: theme.surfaceRaised,
   });
   const shortcuts = new TextRenderable(renderer, {
-    id: "kitty-shortcuts",
+    id: "alacritty-shortcuts",
     flexGrow: 1,
     height: 1,
     content: new StyledText([
@@ -358,7 +358,7 @@ export function createKittyDashboard(
     ]),
   });
   const status = new TextRenderable(renderer, {
-    id: "kitty-status",
+    id: "alacritty-status",
     height: 1,
     content: "",
   });
@@ -370,17 +370,17 @@ export function createKittyDashboard(
   root.add(footer);
   renderer.root.add(root);
 
-  const selectedDefinition = (): KittySettingDefinition =>
-    (settingList.getSelectedOption()?.value as KittySettingDefinition | undefined) ?? KITTY_SETTINGS[0]!;
+  const selectedDefinition = (): AlacrittySettingDefinition =>
+    (settingList.getSelectedOption()?.value as AlacrittySettingDefinition | undefined) ?? ALACRITTY_SETTINGS[0]!;
 
-  const isDirty = (): boolean => buildKittyConfig(snapshot.source, values) !== snapshot.source;
+  const isDirty = (): boolean => buildAlacrittyConfig(snapshot.source, values) !== snapshot.source;
 
   const setStatus = (message: string, tone: StatusTone = "normal"): void => {
     status.content = new StyledText([fg(statusColor(tone))(message)]);
   };
 
   const refreshSummary = (): void => {
-    const warnings = kittyConfigWarnings(values).length + snapshot.issues.length;
+    const warnings = alacrittyConfigWarnings(values).length + snapshot.issues.length;
     summary.content = new StyledText([
       fg(isDirty() ? theme.warning : theme.success)(isDirty() ? "● unsaved" : "✓ saved"),
       ...(warnings > 0 ? [fg(theme.border)("  "), fg(theme.warning)(`${warnings} warning`)] : []),
@@ -391,7 +391,7 @@ export function createKittyDashboard(
     const definition = selectedDefinition();
     detail.content = settingDetail(definition, snapshot, values);
     if (renderer.currentFocusedRenderable !== valueInput) {
-      valueInput.value = values[definition.key] ?? definition.defaultValue;
+      valueInput.value = values[definition.path] ?? definition.defaultValue;
     }
     refreshSummary();
   };
@@ -403,14 +403,14 @@ export function createKittyDashboard(
   };
 
   const refreshRows = (): void => {
-    const selectedKey = selectedDefinition().key;
+    const selectedKey = selectedDefinition().path;
     const availableWidth = Math.max(28, settingsPanel.width - 3);
-    settingList.options = KITTY_SETTINGS.map((definition) => ({
-      name: settingRow(definition, values[definition.key] ?? definition.defaultValue, availableWidth),
+    settingList.options = ALACRITTY_SETTINGS.map((definition) => ({
+      name: settingRow(definition, values[definition.path] ?? definition.defaultValue, availableWidth),
       description: "",
       value: definition,
     }));
-    const index = KITTY_SETTINGS.findIndex((definition) => definition.key === selectedKey);
+    const index = ALACRITTY_SETTINGS.findIndex((definition) => definition.path === selectedKey);
     settingList.setSelectedIndex(Math.max(0, index));
     refreshPathInput();
     refreshDetail();
@@ -442,14 +442,14 @@ export function createKittyDashboard(
       return;
     }
     discardArmed = false;
-    values[definition.key] = adjustKittyValue(definition, values[definition.key]!, direction);
+    values[definition.path] = adjustAlacrittyValue(definition, values[definition.path]!, direction);
     refreshRows();
-    setStatus(`${definition.label}: ${values[definition.key]}`, "warning");
+    setStatus(`${definition.label}: ${values[definition.path]}`, "warning");
   };
 
   const edit = (): void => {
     const definition = selectedDefinition();
-    valueInput.value = values[definition.key] ?? definition.defaultValue;
+    valueInput.value = values[definition.path] ?? definition.defaultValue;
     valueInput.focus();
     setStatus(`Editing ${definition.label} · Enter applies · Esc cancels`, "normal");
   };
@@ -457,13 +457,13 @@ export function createKittyDashboard(
   const editPath = (): void => {
     configPathInput.value = "";
     configPathInput.focus();
-    setStatus("Editing Kitty config path · Enter loads · Esc cancels", "normal");
+    setStatus("Editing Alacritty config path · Enter loads · Esc cancels", "normal");
   };
 
   const resetSelected = (): void => {
     const definition = selectedDefinition();
     discardArmed = false;
-    values[definition.key] = snapshot.baseValues[definition.key] ?? definition.defaultValue;
+    values[definition.path] = snapshot.baseValues[definition.path] ?? definition.defaultValue;
     refreshRows();
     setStatus(`${definition.label} reset to underlying config`, "warning");
   };
@@ -495,7 +495,7 @@ export function createKittyDashboard(
     saving = true;
     setStatus("Loading config path…", "warning");
     try {
-      snapshot = await loadKittyConfig(nextPath);
+      snapshot = await loadAlacrittyConfig(nextPath);
       values = { ...snapshot.values };
       discardArmed = false;
       if (disposed) return;
@@ -518,13 +518,13 @@ export function createKittyDashboard(
     saving = true;
     setStatus("Saving…", "warning");
     try {
-      const result = await (options.onSave ?? saveKittyConfig)(snapshot, values);
+      const result = await (options.onSave ?? saveAlacrittyConfig)(snapshot, values);
       snapshot = result;
       values = { ...snapshot.values };
       discardArmed = false;
       if (disposed) return;
       refreshRows();
-      setStatus(result.backupPath ? "Saved · backup updated · Kitty auto-reloads" : "Saved · Kitty auto-reloads", "success");
+      setStatus(result.backupPath ? "Saved · backup updated · Alacritty auto-reloads" : "Saved · Alacritty auto-reloads", "success");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error), "error");
     } finally {
@@ -537,7 +537,7 @@ export function createKittyDashboard(
     saving = true;
     setStatus("Reloading from disk…", "warning");
     try {
-      snapshot = await (options.onReload ?? (() => loadKittyConfig(snapshot.path)))();
+      snapshot = await (options.onReload ?? (() => loadAlacrittyConfig(snapshot.path)))();
       values = { ...snapshot.values };
       discardArmed = false;
       if (disposed) return;
@@ -566,7 +566,7 @@ export function createKittyDashboard(
     if (renderer.currentFocusedRenderable === valueInput || renderer.currentFocusedRenderable === configPathInput) {
       if (key.name === "escape") {
         if (renderer.currentFocusedRenderable === valueInput) {
-          valueInput.value = values[selectedDefinition().key]!;
+          valueInput.value = values[selectedDefinition().path]!;
         } else {
           configPathInput.value = snapshot.path;
         }
@@ -628,7 +628,7 @@ export function createKittyDashboard(
   const inputSubmitHandler = (): void => {
     const definition = selectedDefinition();
     try {
-      values[definition.key] = validateKittyValue(definition, valueInput.value);
+      values[definition.path] = validateAlacrittyValue(definition, valueInput.value);
       discardArmed = false;
       ignoreSubmittedEnter = true;
       queueMicrotask(() => {
@@ -636,7 +636,7 @@ export function createKittyDashboard(
       });
       settingList.focus();
       refreshRows();
-      setStatus(`${definition.label}: ${values[definition.key]}`, "warning");
+      setStatus(`${definition.label}: ${values[definition.path]}`, "warning");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error), "error");
     }

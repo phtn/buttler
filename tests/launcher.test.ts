@@ -3,6 +3,7 @@ import type { BoxRenderable, TextRenderable } from "@opentui/core";
 import { createTestRenderer } from "@opentui/core/testing";
 import { VERSION } from "../core";
 import {
+  ALACRITTY_TOOL,
   ANALYZER_TOOL,
   createToolLauncher,
   KITTY_TOOL,
@@ -14,6 +15,7 @@ const tools: ToolDefinition[] = [
   MORTI_TOOL,
   ANALYZER_TOOL,
   KITTY_TOOL,
+  ALACRITTY_TOOL,
   ...Array.from({ length: 4 }, (_, index) => ({
     id: `tool-${index + 1}`,
     name: `Tool ${index + 1}`,
@@ -55,6 +57,7 @@ test("tool launcher renders square tiles and supports arrow and Vim navigation",
     expect(frame).toContain("find risky patterns");
     expect(frame).toContain("KITTY");
     expect(frame).toContain("tune your terminal");
+    expect(frame).toContain("ALACRITTY");
     expect(frame.split("\n").find((line) => line.includes("╔"))).not.toContain("Morti");
     expect(frame).toContain("⛖ navigate");
     expect(brand.y).toBe(introduction.y);

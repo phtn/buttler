@@ -4,24 +4,28 @@ import { createTestRenderer } from "@opentui/core/testing";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { buildKittyConfig, parseKittyConfig, saveKittyConfig } from "../core";
-import { createKittyDashboard } from "../ui/kitty-dashboard";
+import { buildAlacrittyConfig, parseAlacrittyConfig, saveAlacrittyConfig } from "../core";
+import { createAlacrittyDashboard } from "../ui/alacritty-dashboard";
 
-test("Kitty dashboard shows effective values, edits them, and saves", async () => {
+test("Alacritty dashboard shows effective values, edits them, and saves", async () => {
   const setup = await createTestRenderer({ width: 110, height: 30 });
   const source = [
-    "font_family JetBrainsMono Nerd Font Mono",
-    "font_size 13.0",
-    "background_blur 10",
+    "live_config_reload = true",
+    "[window]",
+    "opacity = 1.0",
+    "blur = true",
+    "",
+    "[font]",
+    "size = 11.25",
     "",
   ].join("\n");
-  const snapshot = parseKittyConfig("/Users/example/.config/kitty/kitty.conf", source);
+  const snapshot = parseAlacrittyConfig("/Users/example/.config/alacritty/alacritty.toml", source);
   let saves = 0;
   let wentBack = false;
-  const dashboard = createKittyDashboard(setup.renderer, snapshot, {
+  const dashboard = createAlacrittyDashboard(setup.renderer, snapshot, {
     onSave: async (current, values) => {
       saves += 1;
-      return parseKittyConfig(current.path, buildKittyConfig(current.source, values));
+      return parseAlacrittyConfig(current.path, buildAlacrittyConfig(current.source, values));
     },
     onBack: () => {
       wentBack = true;
@@ -31,20 +35,20 @@ test("Kitty dashboard shows effective values, edits them, and saves", async () =
   try {
     await setup.flush();
     let frame = setup.captureCharFrame();
-    expect(frame).toContain("Kitty");
+    expect(frame).toContain("Alacritty");
     expect(frame).toContain("Opacity");
-    expect(frame).toContain("Background blur has no effect");
+    expect(frame).toContain("Window blur has no effect");
     expect(frame).toContain("✓ saved");
 
-    dashboard.settingList.setSelectedIndex(5);
+    dashboard.settingList.setSelectedIndex(8);
     await setup.flush();
-    expect(setup.captureCharFrame()).toContain("JetBrainsMono Nerd Font Mono");
+    expect(setup.captureCharFrame()).toContain("11.25");
 
-    dashboard.settingList.setSelectedIndex(2);
+    dashboard.settingList.setSelectedIndex(1);
     await setup.flush();
     setup.mockInput.pressArrow("left");
     await setup.flush();
-    expect(dashboard.values.background_opacity).toBe("0.95");
+    expect(dashboard.values["window.opacity"]).toBe("0.95");
     frame = setup.captureCharFrame();
     expect(frame).toContain("● unsaved");
 
@@ -52,14 +56,14 @@ test("Kitty dashboard shows effective values, edits them, and saves", async () =
     await Promise.resolve();
     await setup.flush();
     expect(saves).toBe(1);
-    expect(dashboard.values.background_opacity).toBe("0.95");
+    expect(dashboard.values["window.opacity"]).toBe("0.95");
     expect(setup.captureCharFrame()).toContain("✓ saved");
 
     setup.mockInput.pressKey("b");
     await setup.flush();
     expect(wentBack).toBe(true);
 
-    const summary = dashboard.root.findDescendantById("kitty-summary") as TextRenderable;
+    const summary = dashboard.root.findDescendantById("alacritty-summary") as TextRenderable;
     expect(summary.y).toBe(0);
   } finally {
     dashboard.dispose();
@@ -67,19 +71,19 @@ test("Kitty dashboard shows effective values, edits them, and saves", async () =
   }
 });
 
-test("Kitty dashboard can switch the active config path", async () => {
+test("Alacritty dashboard can switch the active config path", async () => {
   const setup = await createTestRenderer({ width: 110, height: 30 });
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), "buttler-kitty-path-"));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "buttler-alacritty-path-"));
 
   try {
-    const primaryPath = path.join(tempDir, "kitty-a.conf");
-    const secondaryPath = path.join(tempDir, "kitty-b.conf");
-    await writeFile(primaryPath, "font_size 11.0\n");
-    await writeFile(secondaryPath, "font_size 12.0\n");
+    const primaryPath = path.join(tempDir, "alacritty-a.toml");
+    const secondaryPath = path.join(tempDir, "alacritty-b.toml");
+    await writeFile(primaryPath, "[font]\nsize = 11.25\n");
+    await writeFile(secondaryPath, "[font]\nsize = 12.00\n");
 
-    const snapshot = parseKittyConfig(primaryPath, await readFile(primaryPath, "utf8"));
-    const dashboard = createKittyDashboard(setup.renderer, snapshot, {
-      onSave: async (current, values) => saveKittyConfig(current, values),
+    const snapshot = parseAlacrittyConfig(primaryPath, await readFile(primaryPath, "utf8"));
+    const dashboard = createAlacrittyDashboard(setup.renderer, snapshot, {
+      onSave: async (current, values) => saveAlacrittyConfig(current, values),
     });
 
     try {
@@ -94,7 +98,7 @@ test("Kitty dashboard can switch the active config path", async () => {
 
       expect(dashboard.configPathInput.value).toBe(secondaryPath);
 
-      dashboard.settingList.setSelectedIndex(6);
+      dashboard.settingList.setSelectedIndex(8);
       await setup.flush();
       setup.mockInput.pressArrow("right");
       await setup.flush();
@@ -102,8 +106,8 @@ test("Kitty dashboard can switch the active config path", async () => {
       await Promise.resolve();
       await setup.flush();
 
-      expect(await readFile(primaryPath, "utf8")).toContain("font_size 11.0");
-      expect(await readFile(secondaryPath, "utf8")).toContain("font_size 12.5");
+      expect(await readFile(primaryPath, "utf8")).toContain("size = 11.25");
+      expect(await readFile(secondaryPath, "utf8")).toContain("size = 12.25");
     } finally {
       dashboard.dispose();
     }

@@ -17,6 +17,10 @@ Kitty is a focused editor for the terminal's most useful color, font, cursor,
 window, tab, and behavior settings. It reads the effective values from
 `~/.config/kitty/kitty.conf` while preserving the rest of the file.
 
+Alacritty is the same kind of editor for `~/.config/alacritty/alacritty.toml`,
+covering a curated set of window, font, cursor, scrolling, selection, and color
+settings.
+
 The terminal dashboard is built on the official
 [OpenTUI](https://opentui.com/) renderer and runs with Bun.
 
@@ -67,7 +71,7 @@ Inside Kitty:
 - `←` / `→` adjusts numbers and predefined choices
 - `Enter` edits an exact value
 - `x` resets the selected setting to the underlying config value
-- `s` saves and `r` reloads values from disk
+- `s` saves, `r` reloads values from disk, and `p` edits the active config path
 - `Esc` or `b` returns to the tool selector; `q` quits
 
 Kitty changes are written as overrides in a clearly marked block at the end of
@@ -75,6 +79,19 @@ the config, so the original reference content stays intact. Saves are atomic,
 refuse to overwrite a file changed by another process, and copy the previous
 file to `kitty.conf.buttler.bak`. Kitty's default automatic config reload makes
 saved settings visible in running terminals when that setting supports reload.
+
+Inside Alacritty:
+
+- `↑` / `↓` selects a setting
+- `←` / `→` adjusts numbers and predefined choices
+- `Enter` edits an exact value
+- `x` resets the selected setting to the underlying config value
+- `s` saves, `r` reloads values from disk, and `p` edits the active config path
+- `Esc` or `b` returns to the tool selector; `q` quits
+
+Alacritty changes are written directly into the TOML file while preserving the
+rest of the config. Saves are atomic, refuse to overwrite a file changed by
+another process, and copy the previous file to `alacritty.toml.buttler.bak`.
 
 ## Script-friendly output
 
